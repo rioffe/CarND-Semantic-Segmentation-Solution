@@ -1,10 +1,19 @@
 import os.path
 import tensorflow as tf
+import numpy as np
 import helper
 import warnings
 from distutils.version import LooseVersion
 import project_tests as tests
-
+# Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+from IPython.display import HTML
+from scipy.misc import toimage, imresize
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageColor
+import time
+from scipy.stats import norm
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
@@ -122,6 +131,26 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
 
 tests.test_train_nn(train_nn)
 
+def pipeline_helper(img, sess, logits, keep_prob, input_image):
+    img_shape = img.shape
+    image_shape = (img_shape[0] + 16, img_shape[1], img_shape[2])
+    image = imresize(img, image_shape)
+
+    im_softmax = sess.run(
+        [tf.nn.softmax(logits)],
+        {keep_prob: 1.0, input_image: np.expand_dims(image, 0)})
+    im_softmax = im_softmax[0][:, 1].reshape(image_shape[0], image_shape[1])
+    segmentation = (im_softmax > 0.5).reshape(image_shape[0], image_shape[1], 1)
+    mask = np.dot(segmentation, np.array([[0, 255, 0, 127]]))
+    mask = toimage(mask, mode="RGBA")
+    street_im = toimage(image)
+    street_im.paste(mask, box=None, mask=mask)
+
+    return np.array(street_im)
+
+def pipeline(sess, logits, keep_prob, input_image):
+    g = lambda img: pipeline_helper(img, sess, logits, keep_prob, input_image)
+    return g
 
 def run():
     num_classes = 2
@@ -139,7 +168,7 @@ def run():
     # You'll need a GPU with at least 10 teraFLOPS to train on.
     #  https://www.cityscapes-dataset.com/
 
-
+    clip = VideoFileClip('driving.mp4')
 
     with tf.Session() as sess:
         # Path to vgg model
@@ -163,6 +192,9 @@ def run():
         logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
         
         init = tf.global_variables_initializer()
+        # Add ops to save and restore all the variables. 
+        saver = tf.train.Saver()
+
         sess.run(init)
         # Train NN using the train_nn function
         train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, vgg_input,
@@ -170,9 +202,19 @@ def run():
 
         # Save inference data using helper.save_inference_samples
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, vgg_keep_prob, vgg_input)
+        
+        # Save the variables to disk.
+        save_path = saver.save(sess, "/tmp/model.ckpt")
+        print("Model saved in path: %s" % save_path)
+        # Restore variables from disk.
+        #saver.restore(sess, "/tmp/model.ckpt")
+        #print("Model restored.")
 
-        # OPTIONAL: Apply the trained model to a video
-
+        # Apply the trained model to a video
+        new_clip = clip.fl_image(pipeline(sess, logits, vgg_keep_prob, vgg_input))
+    
+        # write to file
+        new_clip.write_videofile('result.mp4')
 
 if __name__ == '__main__':
     run()
