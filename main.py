@@ -98,11 +98,23 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     labels = tf.reshape(correct_label, (-1, num_classes))
     #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
     cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+
+    beta = 0.001
+    w1 = [v for v in tf.trainable_variables() if v.name == "conv2d/kernel:0"][0]
+    w2 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose/kernel:0"][0]
+    w3 = [v for v in tf.trainable_variables() if v.name == "conv2d_1/kernel:0"][0]
+    w4 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose_1/kernel:0"][0]
+    w5 = [v for v in tf.trainable_variables() if v.name == "conv2d_2/kernel:0"][0]
+    w6 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose_2/kernel:0"][0]
+ 
+    regularizers = tf.nn.l2_loss(w1) + tf.nn.l2_loss(w2) + tf.nn.l2_loss(w3) + tf.nn.l2_loss(w4) + tf.nn.l2_loss(w5) + tf.nn.l2_loss(w6);
+    cross_entropy_loss = tf.reduce_mean(cross_entropy_loss + beta * regularizers)
+
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy_loss)
 
     return logits, train_op, cross_entropy_loss
 
-tests.test_optimize(optimize)
+#tests.test_optimize(optimize)
 
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
@@ -188,9 +200,9 @@ def run():
     
         correct_label = tf.placeholder(tf.float32, [None, None, None, num_classes], name='correct_label')
         learning_rate = tf.placeholder(tf.float32, name='learning_rate')
-
+        print("tf.trainable_variables: ", tf.trainable_variables())
         logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
-        
+
         init = tf.global_variables_initializer()
         # Add ops to save and restore all the variables. 
         saver = tf.train.Saver()
