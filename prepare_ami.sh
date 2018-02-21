@@ -8,3 +8,5 @@ wget http://kitti.is.tue.mpg.de/kitti/data_road.zip
 unzip data_road.zip
 rm data_road.zip
 pip install tqdm
+pip install moviepy
+sudo apt-get install ffmpeg
