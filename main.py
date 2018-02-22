@@ -52,6 +52,7 @@ def load_vgg(sess, vgg_path):
 
 tests.test_load_vgg(load_vgg, tf)
 
+beta = 0.003
 
 def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     """
@@ -63,22 +64,22 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :return: The Tensor for the last layer of output
     """
     conv1x1 = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', 
-                             kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                             kernel_regularizer=tf.contrib.layers.l2_regularizer(beta))
     output = tf.layers.conv2d_transpose(conv1x1, num_classes, 4, 2, padding='same', 
-                             kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                             kernel_regularizer=tf.contrib.layers.l2_regularizer(beta))
     
     conv1x1 = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', 
-                             kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                             kernel_regularizer=tf.contrib.layers.l2_regularizer(beta))
     input = tf.add(output, conv1x1)
     input = tf.layers.conv2d_transpose(input, num_classes, 4, 2, padding='same', 
-                             kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                             kernel_regularizer=tf.contrib.layers.l2_regularizer(beta))
     
     
     conv1x1 = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', 
-                             kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                             kernel_regularizer=tf.contrib.layers.l2_regularizer(beta))
     input = tf.add(input, conv1x1)
     input = tf.layers.conv2d_transpose(input, num_classes, 16, 8, padding='same', 
-                             kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                             kernel_regularizer=tf.contrib.layers.l2_regularizer(beta))
     
     return input
 
@@ -99,7 +100,6 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
     cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
-    beta = 0.001
     w1 = [v for v in tf.trainable_variables() if v.name == "conv2d/kernel:0"][0]
     w2 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose/kernel:0"][0]
     w3 = [v for v in tf.trainable_variables() if v.name == "conv2d_1/kernel:0"][0]
@@ -170,7 +170,7 @@ def run():
     data_dir = './data'
     runs_dir = './runs'
     tests.test_for_kitti_dataset(data_dir)
-    epochs = 20
+    epochs = 30
     batch_size = 5
 
     # Download pretrained vgg model
