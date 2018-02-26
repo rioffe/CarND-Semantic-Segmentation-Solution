@@ -148,7 +148,19 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
 
 tests.test_train_nn(train_nn)
 
+from skimage import exposure
+
 def pipeline_helper(img, sess, logits, keep_prob, input_image):
+    #img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    # create a CLAHE object (Arguments are optional).
+    #clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    #img_yuv[:,:,0] = clahe.apply(img_yuv[:,:,0] )
+
+    #equ = cv2.cvtColor(img_yuv, cv2.COLOR_LAB2BGR)
+    #img = exposure.equalize_adapthist(img)
+    #img = exposure.adjust_gamma(img, 0.25)
+    #equ = exposure.adjust_sigmoid(img, gain=8)
+
     img_shape = img.shape
     image_shape = (img_shape[0] + 16, img_shape[1], img_shape[2])
     image = imresize(img, image_shape)
@@ -176,6 +188,12 @@ def random_dark_image(im):
 
     darken = randint(0, 125)
     v = np.where(v > darken, v - darken, 0)
+    #lighten = randint(0, 50)
+    #pickone = randint(0, 1)
+    #if (pickone == 0):
+    #    v = np.where(v > darken, v - darken, 0)
+    #else:
+    #    v = np.where(v + lighten < 255, v + lighten, 255)
 
     im = cv2.merge((h_, s, v))
     return im
@@ -228,7 +246,7 @@ def run():
     data_dir = './data'
     runs_dir = './runs'
     tests.test_for_kitti_dataset(data_dir)
-    epochs = 30
+    epochs = 50
     batch_size = 5
 
     # Download pretrained vgg model
@@ -267,6 +285,8 @@ def run():
         saver = tf.train.Saver()
 
         sess.run(init)
+        #saver.restore(sess, "/tmp/model.ckpt")
+        #print("Model restored.")
         # Train NN using the train_nn function
         train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, vgg_input,
              correct_label, vgg_keep_prob, learning_rate)
