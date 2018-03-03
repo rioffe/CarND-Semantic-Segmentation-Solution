@@ -1,0 +1,13 @@
+1. add command line parameters for epochs, batch size, learning rate and beta (regularization parameter)
+2. collect and plot loss data
+3. animation gif as a summary? convert -delay 30 -loop 0 *.png animation.gif
+
+Good parameters:
+
+Epochs: 30, Learning Rate: 0.001, Batch Size: 5 - this one obtained w/ TensorFlow 1.2 running in AWS 
+Epochs: 50, Learning Rate: 0.0001, Batch Size: 5 - this one obtained w/ TensorFlow 1.5 running on my local machine GT1060 card
+
+Things to try: batch size of 16 (epochs 90 or more), lr .001, .0001
+batch size of 20 (epochs 120 or more), lr .001, .0001
+
+

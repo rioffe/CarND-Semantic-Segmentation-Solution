@@ -1,3 +1,4 @@
+import os
 import os.path
 import tensorflow as tf
 import numpy as np
@@ -19,6 +20,9 @@ from glob import glob
 import re
 from random import *
 import scipy.misc
+
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 # Check TensorFlow Version
 assert LooseVersion(tf.__version__) >= LooseVersion('1.0'), 'Please use TensorFlow version 1.0 or newer.  You are using {}'.format(tf.__version__)
@@ -102,8 +106,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     """
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     labels = tf.reshape(correct_label, (-1, num_classes))
-    #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
-    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
+    #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
     w1 = [v for v in tf.trainable_variables() if v.name == "conv2d/kernel:0"][0]
     w2 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose/kernel:0"][0]
@@ -141,7 +145,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
         print('Epoch ', epoch)
         for image, label in get_batches_fn(batch_size):
              _, loss_val = sess.run([train_op, cross_entropy_loss],
-                           feed_dict={keep_prob: 0.5, correct_label: label, input_image: image, learning_rate: 0.001})
+                           feed_dict={keep_prob: 0.5, correct_label: label, input_image: image, learning_rate: 0.0001})
              print('loss = ', loss_val)
     
     return
@@ -231,7 +235,7 @@ def my_gen_batch_function(data_folder, image_shape):
                 gt_bg = gt_bg.reshape(*gt_bg.shape, 1)
                 gt_image = np.concatenate((gt_bg, np.invert(gt_bg)), axis=2)
 
-                image = random_dark_image(image) 
+                #image = random_dark_image(image) 
 
                 images.append(image)
                 gt_images.append(gt_image)
@@ -247,7 +251,7 @@ def run():
     runs_dir = './runs'
     tests.test_for_kitti_dataset(data_dir)
     epochs = 50
-    batch_size = 5
+    batch_size = 4
 
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(data_dir)
@@ -270,14 +274,14 @@ def run():
 
         # Build NN using load_vgg, layers, and optimize function
         vgg_input, vgg_keep_prob, vgg_layer3_out, vgg_layer4_out, vgg_layer7_out = load_vgg(sess, vgg_path)
-        print("vgg_input: ", vgg_input)
+        #print("vgg_input: ", vgg_input)
 
         nn_last_layer = layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes)
-        print("nn_last_layer: ", nn_last_layer)
+        #print("nn_last_layer: ", nn_last_layer)
     
         correct_label = tf.placeholder(tf.float32, [None, None, None, num_classes], name='correct_label')
         learning_rate = tf.placeholder(tf.float32, name='learning_rate')
-        print("tf.trainable_variables: ", tf.trainable_variables())
+        #print("tf.trainable_variables: ", tf.trainable_variables())
         logits, train_op, cross_entropy_loss = optimize(nn_last_layer, correct_label, learning_rate, num_classes)
 
         init = tf.global_variables_initializer()
