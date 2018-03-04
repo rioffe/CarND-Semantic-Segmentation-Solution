@@ -269,11 +269,15 @@ def run(argv):
     data_dir = './data'
     runs_dir = './runs'
     tests.test_for_kitti_dataset(data_dir)
+    global epochs
+    global batch_size
+    global lr
+    global beta
+
     epochs = int(argv[0])
     batch_size = int(argv[1])
     lr = float(argv[2])
     beta = float(argv[3])
-
     print("Epochs: ", epochs, " Batch Size: ", batch_size, " Learning Rate: ", lr, " Beta: ", beta)
     print("Output will go to ", 'result_epochs_{}_batchsz_{}_lr_{}_beta_{}.mp4'.format(epochs, batch_size, lr, beta))
 
