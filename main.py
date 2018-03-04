@@ -20,6 +20,8 @@ from glob import glob
 import re
 from random import *
 import scipy.misc
+import sys
+from tqdm import tqdm
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -94,6 +96,8 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
 
 tests.test_layers(layers)
 
+# enable regularizers
+enable_regularizers = False
 
 def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     """
@@ -108,23 +112,28 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     labels = tf.reshape(correct_label, (-1, num_classes))
     cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
     #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
-
-    w1 = [v for v in tf.trainable_variables() if v.name == "conv2d/kernel:0"][0]
-    w2 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose/kernel:0"][0]
-    w3 = [v for v in tf.trainable_variables() if v.name == "conv2d_1/kernel:0"][0]
-    w4 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose_1/kernel:0"][0]
-    w5 = [v for v in tf.trainable_variables() if v.name == "conv2d_2/kernel:0"][0]
-    w6 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose_2/kernel:0"][0]
+    
+    if (enable_regularizers):
+        print("Enabling Regularizers...")
+        w1 = [v for v in tf.trainable_variables() if v.name == "conv2d/kernel:0"][0]
+        w2 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose/kernel:0"][0]
+        w3 = [v for v in tf.trainable_variables() if v.name == "conv2d_1/kernel:0"][0]
+        w4 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose_1/kernel:0"][0]
+        w5 = [v for v in tf.trainable_variables() if v.name == "conv2d_2/kernel:0"][0]
+        w6 = [v for v in tf.trainable_variables() if v.name == "conv2d_transpose_2/kernel:0"][0]
  
-    regularizers = tf.nn.l2_loss(w1) + tf.nn.l2_loss(w2) + tf.nn.l2_loss(w3) + tf.nn.l2_loss(w4) + tf.nn.l2_loss(w5) + tf.nn.l2_loss(w6);
-    cross_entropy_loss = tf.reduce_mean(cross_entropy_loss + beta * regularizers)
+        regularizers = tf.nn.l2_loss(w1) + tf.nn.l2_loss(w2) + tf.nn.l2_loss(w3) + tf.nn.l2_loss(w4) + tf.nn.l2_loss(w5) + tf.nn.l2_loss(w6);
+        cross_entropy_loss = tf.reduce_mean(cross_entropy_loss + beta * regularizers)
 
     train_op = tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy_loss)
 
     return logits, train_op, cross_entropy_loss
 
-#tests.test_optimize(optimize)
+tests.test_optimize(optimize)
+enable_regularizers = True
 
+#learning rate
+lr = 0.0001
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
              correct_label, keep_prob, learning_rate):
@@ -141,12 +150,18 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
-    for epoch in range(epochs):
+    losses = np.array([])
+    i = 1
+    for epoch in tqdm(range(epochs)):
         print('Epoch ', epoch)
         for image, label in get_batches_fn(batch_size):
              _, loss_val = sess.run([train_op, cross_entropy_loss],
-                           feed_dict={keep_prob: 0.5, correct_label: label, input_image: image, learning_rate: 0.0001})
+                           feed_dict={keep_prob: 0.5, correct_label: label, input_image: image, learning_rate: lr})
              print('loss = ', loss_val)
+             np.append(losses, [i*batch_size, loss_val], axis=0)
+             i = i + batch_size
+    
+    np.savetxt("losses.csv", losses, delimiter=",")
     
     return
 
@@ -244,14 +259,19 @@ def my_gen_batch_function(data_folder, image_shape):
     return get_batches_fn
 
 
-def run():
+def run(argv):
     num_classes = 2
     image_shape = (160, 576)
     data_dir = './data'
     runs_dir = './runs'
     tests.test_for_kitti_dataset(data_dir)
-    epochs = 50
-    batch_size = 4
+    epochs = int(argv[0])
+    batch_size = int(argv[1])
+    lr = float(argv[2])
+    beta = float(argv[3])
+
+    print("Epochs: ", epochs, " Batch Size: ", batch_size, " Learning Rate: ", lr, " Beta: ", beta)
+    print("Output will go to ", 'result_epochs_{}_batchsz_{}_lr_{}_beta_{}.mp4'.format(epochs, batch_size, lr, beta))
 
     # Download pretrained vgg model
     helper.maybe_download_pretrained_vgg(data_dir)
@@ -309,7 +329,7 @@ def run():
         new_clip = clip.fl_image(pipeline(sess, logits, vgg_keep_prob, vgg_input))
     
         # write to file
-        new_clip.write_videofile('result.mp4')
+        new_clip.write_videofile('result_epochs_{}_batchsz_{}_lr_{}_beta_{}.mp4'.format(epochs, batch_size, lr, beta))
 
 if __name__ == '__main__':
-    run()
+    run(sys.argv[1:])
