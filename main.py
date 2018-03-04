@@ -110,8 +110,8 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     """
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     labels = tf.reshape(correct_label, (-1, num_classes))
-    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
-    #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+    #cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=logits, labels=labels))
+    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
     
     if (enable_regularizers):
         print("Enabling Regularizers...")
@@ -135,6 +135,9 @@ enable_regularizers = True
 #learning rate
 lr = 0.0001
 
+epochs = 1
+batch_size = 4
+
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
              correct_label, keep_prob, learning_rate):
     """
@@ -150,18 +153,19 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param keep_prob: TF Placeholder for dropout keep probability
     :param learning_rate: TF Placeholder for learning rate
     """
-    losses = np.array([])
-    i = 1
+    losses = np.zeros([1, 2])
+    i = 0
     for epoch in tqdm(range(epochs)):
         print('Epoch ', epoch)
         for image, label in get_batches_fn(batch_size):
              _, loss_val = sess.run([train_op, cross_entropy_loss],
                            feed_dict={keep_prob: 0.5, correct_label: label, input_image: image, learning_rate: lr})
              print('loss = ', loss_val)
-             np.append(losses, [i*batch_size, loss_val], axis=0)
              i = i + batch_size
+             losses = np.append(losses, [[i, loss_val]], axis=0)
     
-    np.savetxt("losses.csv", losses, delimiter=",")
+    print("losses: ", losses)
+    np.savetxt('losses_epochs_{}_batchsz_{}_lr_{}_beta_{}.csv'.format(epochs, batch_size, lr, beta), losses, delimiter=",")
     
     return
 
