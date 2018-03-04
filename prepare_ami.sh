@@ -10,4 +10,5 @@ rm data_road.zip
 pip install tqdm
 pip install moviepy
 pip install opencv-python
+sudo rm -f /var/lib/dpkg/lock
 sudo apt-get -y install ffmpeg
